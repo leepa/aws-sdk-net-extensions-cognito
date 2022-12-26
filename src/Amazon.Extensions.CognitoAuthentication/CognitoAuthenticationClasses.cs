@@ -14,7 +14,6 @@
  */
 
 using System.Collections.Generic;
-
 using Amazon.CognitoIdentityProvider;
 using Amazon.CognitoIdentityProvider.Model;
 
@@ -34,7 +33,9 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// <param name="challengeName">The challenge name if any.</param>
         /// <param name="challengeParameters">The challenge parameters if any.</param>
         /// <param name="clientMetadata">The client metadata.</param>
-        public AuthFlowResponse(string sessionId, AuthenticationResultType authenticationResult, ChallengeNameType challengeName, IDictionary<string, string> challengeParameters, IDictionary<string, string> clientMetadata)
+        public AuthFlowResponse(string sessionId, AuthenticationResultType authenticationResult,
+            ChallengeNameType challengeName, IDictionary<string, string> challengeParameters,
+            IDictionary<string, string> clientMetadata)
         {
             SessionID = sessionId;
             ChallengeName = challengeName;
@@ -79,18 +80,31 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// The password for the corresponding CognitoUser.
         /// </summary>
         public string Password { get; set; }
+
         /// <summary>
-        /// The password for the device associated with the corresponding CognitoUser 
+        /// The password for the device associated with the corresponding CognitoUser
         /// </summary>
         public string DevicePass { get; set; }
+
         /// <summary>
         /// The device password verifier for the device associated with the corresponding CognitoUser
         /// </summary>
         public string DeviceVerifier { get; set; }
+
         /// <summary>
         /// The Device Key Group for the device associated with the corresponding CognitoUser
         /// </summary>
         public string DeviceGroupKey { get; set; }
+
+        /// <summary>
+        /// The UserContext Encoded Data used for device fingerprinting etc.
+        /// </summary>
+        public string UserContextEncodedData { get; set; }
+
+        /// <summary>
+        /// The IP address of the user signing in
+        /// </summary>
+        public string UserContextIpAddress { get; set; }
     }
 
     /// <summary>
@@ -140,7 +154,7 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// <summary>
         /// The challenge name type for the current authentication flow.
         /// </summary>
-        public virtual ChallengeNameType ChallengeNameType { get; set; }        
+        public virtual ChallengeNameType ChallengeNameType { get; set; }
     }
 
     /// <summary>
@@ -151,7 +165,11 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// <summary>
         /// The challenge name type for the current authentication flow.
         /// </summary>
-        public override ChallengeNameType ChallengeNameType { get { return ChallengeNameType.SMS_MFA; } set { } }
+        public override ChallengeNameType ChallengeNameType
+        {
+            get { return ChallengeNameType.SMS_MFA; }
+            set { }
+        }
     }
 
     /// <summary>

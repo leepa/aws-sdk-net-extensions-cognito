@@ -1,25 +1,26 @@
 ﻿/*
  * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
  * A copy of the License is located at
- * 
+ *
  *  http://aws.amazon.com/apache2.0
- * 
+ *
  * or in the "license" file accompanying this file. This file is distributed
  * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
  * express or implied. See the License for the specific language governing
  * permissions and limitations under the License.
  */
 
-/* The following knowledge base was used as guide for the implementation 
+/* The following knowledge base was used as guide for the implementation
  * of some of the below Cognito challenges.
  * https://aws.amazon.com/premiumsupport/knowledge-center/cognito-user-pool-remembered-devices/?nc1=h_ls
  */
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Numerics;
 using System.Threading.Tasks;
@@ -30,24 +31,36 @@ using Amazon.Extensions.CognitoAuthentication.Util;
 
 namespace Amazon.Extensions.CognitoAuthentication
 {
-    partial class CognitoUser
+    sealed partial class CognitoUser
     {
         /// <summary>
         /// Initiates the asynchronous SRP authentication flow
         /// </summary>
         /// <param name="srpRequest">InitiateSrpAuthRequest object containing the necessary parameters to
         /// create an InitiateAuthAsync API call for SRP authentication</param>
-        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge, 
+        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge,
         /// if one exists</returns>
-        public virtual async Task<AuthFlowResponse> StartWithSrpAuthAsync(InitiateSrpAuthRequest srpRequest)
+        public async Task<AuthFlowResponse> StartWithSrpAuthAsync(InitiateSrpAuthRequest srpRequest)
         {
             if (srpRequest == null || string.IsNullOrEmpty(srpRequest.Password))
             {
-                throw new ArgumentNullException("Password required for authentication.", "srpRequest");
+                throw new ArgumentNullException(nameof(srpRequest), "Password required for authentication.");
             }
 
             Tuple<BigInteger, BigInteger> tupleAa = AuthenticationHelper.CreateAaTuple();
             InitiateAuthRequest initiateRequest = CreateSrpAuthRequest(tupleAa);
+
+            if (!string.IsNullOrEmpty(srpRequest.UserContextEncodedData) ||
+                !string.IsNullOrEmpty(srpRequest.UserContextIpAddress))
+            {
+                var userContextData = new UserContextDataType
+                {
+                    EncodedData = srpRequest.UserContextEncodedData,
+                    IpAddress = srpRequest.UserContextIpAddress,
+                };
+
+                initiateRequest.UserContextData = userContextData;
+            }
 
             InitiateAuthResponse initiateResponse = await Provider.InitiateAuthAsync(initiateRequest).ConfigureAwait(false);
             UpdateUsernameAndSecretHash(initiateResponse.ChallengeParameters);
@@ -72,12 +85,12 @@ namespace Amazon.Extensions.CognitoAuthentication
             {
                 if (string.IsNullOrEmpty(srpRequest.DeviceGroupKey) || string.IsNullOrEmpty(srpRequest.DevicePass))
                 {
-                    throw new ArgumentNullException("Device Group Key and Device Pass required for authentication.", "srpRequest");
+                    throw new ArgumentNullException(nameof(srpRequest), "Device Group Key and Device Pass required for authentication.");
                 }
 
                 #region Device SRP Auth
                 var deviceAuthRequest = CreateDeviceSrpAuthRequest(verifierResponse, tupleAa);
-                var deviceAuthResponse = await Provider.RespondToAuthChallengeAsync(deviceAuthRequest).ConfigureAwait(false); 
+                var deviceAuthResponse = await Provider.RespondToAuthChallengeAsync(deviceAuthRequest).ConfigureAwait(false);
                 #endregion
 
                 #region Device Password Verifier
@@ -105,7 +118,6 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// <returns></returns>
         private RespondToAuthChallengeRequest CreateDeviceSrpAuthRequest(RespondToAuthChallengeResponse challenge, Tuple<BigInteger, BigInteger> tupleAa)
         {
-            
             RespondToAuthChallengeRequest authChallengeRequest = new RespondToAuthChallengeRequest()
             {
                 ChallengeName = "DEVICE_SRP_AUTH",
@@ -147,19 +159,18 @@ namespace Amazon.Extensions.CognitoAuthentication
             string salt = challenge.ChallengeParameters[CognitoConstants.ChlgParamSalt];
             BigInteger srpb = BigIntegerExtensions.FromUnsignedLittleEndianHex(challenge.ChallengeParameters[CognitoConstants.ChlgParamSrpB]);
 
-            if ((srpb.TrueMod(AuthenticationHelper.N)).Equals(BigInteger.Zero))
+            if (srpb.TrueMod(AuthenticationHelper.N).Equals(BigInteger.Zero))
             {
-                throw new ArgumentException("SRP error, B mod N cannot be zero.", "challenge");
+                throw new ArgumentException("SRP error, B mod N cannot be zero.", nameof(challenge));
             }
 
-            string timeStr = DateTime.UtcNow.ToString("ddd MMM d HH:mm:ss \"UTC\" yyyy", CultureInfo.InvariantCulture);
+            var timeStr = DateTime.UtcNow.ToString("ddd MMM d HH:mm:ss \"UTC\" yyyy", CultureInfo.InvariantCulture);
 
             var claimBytes = AuthenticationHelper.AuthenticateDevice(username, deviceKey, devicePassword, deviceKeyGroup, salt,
                 challenge.ChallengeParameters[CognitoConstants.ChlgParamSrpB], secretBlock, timeStr, tupleAa);
 
-
-            string claimB64 = Convert.ToBase64String(claimBytes);
-            Dictionary<string, string> srpAuthResponses = new Dictionary<string, string>(StringComparer.Ordinal)
+            var claimB64 = Convert.ToBase64String(claimBytes);
+            var srpAuthResponses = new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 {CognitoConstants.ChlgParamPassSecretBlock, secretBlock},
                 {CognitoConstants.ChlgParamPassSignature, claimB64},
@@ -190,9 +201,9 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// </summary>
         /// <param name="customRequest">InitiateCustomAuthRequest object containing the necessary parameters to
         /// create an InitiateAuthAsync API call for custom authentication</param>
-        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge, 
+        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge,
         /// if one exists</returns>
-        public virtual async Task<AuthFlowResponse> StartWithCustomAuthAsync(InitiateCustomAuthRequest customRequest)
+        public async Task<AuthFlowResponse> StartWithCustomAuthAsync(InitiateCustomAuthRequest customRequest)
         {
             InitiateAuthRequest authRequest = new InitiateAuthRequest()
             {
@@ -215,16 +226,16 @@ namespace Amazon.Extensions.CognitoAuthentication
         }
 
         /// <summary>
-        /// Uses the properties of the RespondToCustomChallengeRequest object to respond to the current 
+        /// Uses the properties of the RespondToCustomChallengeRequest object to respond to the current
         /// custom authentication challenge using an asynchronous call
         /// </summary>
         /// <param name="customRequest">RespondToCustomChallengeRequest object containing the necessary parameters to
         /// respond to the current custom authentication challenge</param>
-        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge, 
+        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge,
         /// if one exists</returns>
-        public virtual async Task<AuthFlowResponse> RespondToCustomAuthAsync(RespondToCustomChallengeRequest customRequest)
+        public async Task<AuthFlowResponse> RespondToCustomAuthAsync(RespondToCustomChallengeRequest customRequest)
         {
-            RespondToAuthChallengeRequest request = new RespondToAuthChallengeRequest()
+            var request = new RespondToAuthChallengeRequest()
             {
                 ChallengeName = ChallengeNameType.CUSTOM_CHALLENGE,
                 ClientId = ClientID,
@@ -249,8 +260,8 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// Generates a DeviceSecretVerifierConfigType object for a device associated with a CognitoUser for SRP Authentication
         /// </summary>
         /// <param name="deviceGroupKey">The DeviceKey Group for the associated CognitoDevice</param>
-        /// <param name="deviceKey">The DeviceKey for the associated CognitoDevice</param>
         /// <param name="devicePass">The random password for the associated CognitoDevice</param>
+        /// <param name="username">The username</param>
         /// <returns></returns>
         public DeviceSecretVerifierConfigType GenerateDeviceVerifier(string deviceGroupKey, string devicePass, string username)
         {
@@ -303,25 +314,25 @@ namespace Amazon.Extensions.CognitoAuthentication
         }
 
         /// <summary>
-        /// Uses the properties of the RespondToSmsMfaRequest object to respond to the current MFA 
+        /// Uses the properties of the RespondToSmsMfaRequest object to respond to the current MFA
         /// authentication challenge using an asynchronous call
         /// </summary>
         /// <param name="smsMfaRequest">RespondToSmsMfaRequest object containing the necessary parameters to
         /// respond to the current SMS MFA authentication challenge</param>
-        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge, 
+        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge,
         /// if one exists</returns>
-        public virtual async Task<AuthFlowResponse> RespondToSmsMfaAuthAsync(RespondToSmsMfaRequest smsMfaRequest)
+        public async Task<AuthFlowResponse> RespondToSmsMfaAuthAsync(RespondToSmsMfaRequest smsMfaRequest)
         {
             return await RespondToMfaAuthAsync(smsMfaRequest).ConfigureAwait(false);
         }
 
         /// <summary>
-        /// Uses the properties of the RespondToSmsMfaRequest object to respond to the current MFA 
+        /// Uses the properties of the RespondToSmsMfaRequest object to respond to the current MFA
         /// authentication challenge using an asynchronous call
         /// </summary>
         /// <param name="mfaRequest">RespondToMfaRequest object containing the necessary parameters to
         /// respond to the current MFA authentication challenge</param>
-        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge, 
+        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge,
         /// if one exists</returns>
         public async Task<AuthFlowResponse> RespondToMfaAuthAsync(RespondToMfaRequest mfaRequest)
         {
@@ -368,29 +379,29 @@ namespace Amazon.Extensions.CognitoAuthentication
         }
 
         /// <summary>
-        /// Uses the properties of the RespondToNewPasswordRequiredRequest object to respond to the current new 
+        /// Uses the properties of the RespondToNewPasswordRequiredRequest object to respond to the current new
         /// password required authentication challenge using an asynchronous call
         /// </summary>
-        /// <param name="newPasswordRequest">RespondToNewPasswordRequiredRequest object containing the necessary 
+        /// <param name="newPasswordRequest">RespondToNewPasswordRequiredRequest object containing the necessary
         /// parameters to respond to the current SMS MFA authentication challenge</param>
-        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge, 
+        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge,
         /// if one exists</returns>
-        public virtual Task<AuthFlowResponse> RespondToNewPasswordRequiredAsync(RespondToNewPasswordRequiredRequest newPasswordRequest)
+        public Task<AuthFlowResponse> RespondToNewPasswordRequiredAsync(RespondToNewPasswordRequiredRequest newPasswordRequest)
         {
             return RespondToNewPasswordRequiredAsync(newPasswordRequest, null);
         }
 
         /// <summary>
-        /// Uses the properties of the RespondToNewPasswordRequiredRequest object to respond to the current new 
+        /// Uses the properties of the RespondToNewPasswordRequiredRequest object to respond to the current new
         /// password required authentication challenge using an asynchronous call
         /// </summary>
-        /// <param name="newPasswordRequest">RespondToNewPasswordRequiredRequest object containing the necessary 
-        /// <param name="requiredAttributes">Optional dictionnary of attributes that may be required by the user pool
+        /// <param name="newPasswordRequest">RespondToNewPasswordRequiredRequest object containing the necessary</param>
+        /// <param name="requiredAttributes">Optional dictionary of attributes that may be required by the user pool
         /// Each attribute key must be prefixed by "userAttributes."
         /// parameters to respond to the current SMS MFA authentication challenge</param>
-        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge, 
+        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge,
         /// if one exists</returns>
-        public virtual async Task<AuthFlowResponse> RespondToNewPasswordRequiredAsync(RespondToNewPasswordRequiredRequest newPasswordRequest, Dictionary<string, string> requiredAttributes)
+        public async Task<AuthFlowResponse> RespondToNewPasswordRequiredAsync(RespondToNewPasswordRequiredRequest newPasswordRequest, Dictionary<string, string> requiredAttributes)
         {
             var challengeResponses = new Dictionary<string, string>()
             {
@@ -408,7 +419,7 @@ namespace Amazon.Extensions.CognitoAuthentication
 
             RespondToAuthChallengeRequest challengeRequest = new RespondToAuthChallengeRequest
             {
-                
+
                 ChallengeResponses = challengeResponses,
                 Session = newPasswordRequest.SessionID,
                 ClientId = ClientID,
@@ -435,11 +446,11 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// <summary>
         /// Initiates the asynchronous refresh token authentication flow
         /// </summary>
-        /// <param name="refreshTokenRequest">InitiateRefreshTokenAuthRequest object containing the necessary 
+        /// <param name="refreshTokenRequest">InitiateRefreshTokenAuthRequest object containing the necessary
         /// parameters to initiate the refresh token authentication flow</param>
-        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge, 
+        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge,
         /// if one exists</returns>
-        public virtual async Task<AuthFlowResponse> StartWithRefreshTokenAuthAsync(InitiateRefreshTokenAuthRequest refreshTokenRequest)
+        public async Task<AuthFlowResponse> StartWithRefreshTokenAuthAsync(InitiateRefreshTokenAuthRequest refreshTokenRequest)
         {
             InitiateAuthRequest initiateAuthRequest = CreateRefreshTokenAuthRequest(refreshTokenRequest.AuthFlowType);
 
@@ -462,11 +473,11 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// <summary>
         /// Initiates the asynchronous ADMIN_NO_SRP_AUTH authentication flow
         /// </summary>
-        /// <param name="adminAuthRequest">InitiateAdminNoSrpAuthRequest object containing the necessary 
+        /// <param name="adminAuthRequest">InitiateAdminNoSrpAuthRequest object containing the necessary
         /// parameters to initiate the ADMIN_NO_SRP_AUTH authentication flow</param>
-        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge, 
+        /// <returns>Returns the AuthFlowResponse object that can be used to respond to the next challenge,
         /// if one exists</returns>
-        public virtual async Task<AuthFlowResponse> StartWithAdminNoSrpAuthAsync(InitiateAdminNoSrpAuthRequest adminAuthRequest)
+        public async Task<AuthFlowResponse> StartWithAdminNoSrpAuthAsync(InitiateAdminNoSrpAuthRequest adminAuthRequest)
         {
             AdminInitiateAuthRequest initiateAuthRequest = CreateAdminAuthRequest(adminAuthRequest);
 
@@ -527,7 +538,7 @@ namespace Amazon.Extensions.CognitoAuthentication
         }
 
         /// <summary>
-        /// Internal mehtod which updates CognitoUser's username, secret hash, and device key from challege parameters
+        /// Internal method which updates CognitoUser's username, secret hash, and device key from challenge parameters
         /// </summary>
         /// <param name="challengeParameters">Dictionary containing the key-value pairs for challenge parameters</param>
         private void UpdateUsernameAndSecretHash(IDictionary<string, string> challengeParameters)
@@ -540,6 +551,8 @@ namespace Amazon.Extensions.CognitoAuthentication
             {
                 return;
             }
+
+            Debug.Assert(challengeParameters != null, nameof(challengeParameters) + " != null");
 
             if (challengeParameters.ContainsKey(CognitoConstants.ChlgParamUsername))
             {
@@ -684,7 +697,7 @@ namespace Amazon.Extensions.CognitoAuthentication
         {
             EnsureUserAuthenticated();
 
-            string poolRegion = UserPool.PoolID.Substring(0, UserPool.PoolID.IndexOf("_"));
+            string poolRegion = UserPool.PoolID.Substring(0, UserPool.PoolID.IndexOf("_", StringComparison.Ordinal));
             string providerName = "cognito-idp." + poolRegion + ".amazonaws.com/" + UserPool.PoolID;
 
             CognitoAWSCredentials credentials = new CognitoAWSCredentials(identityPoolID, identityPoolRegion);

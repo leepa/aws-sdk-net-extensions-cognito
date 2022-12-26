@@ -1,12 +1,12 @@
 ﻿/*
  * Copyright 2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License").
  * You may not use this file except in compliance with the License.
  * A copy of the License is located at
- * 
+ *
  *  http://aws.amazon.com/apache2.0
- * 
+ *
  * or in the "license" file accompanying this file. This file is distributed
  * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
  * express or implied. See the License for the specific language governing
@@ -22,8 +22,8 @@ using Amazon.Extensions.CognitoAuthentication.Util;
 
 namespace Amazon.Extensions.CognitoAuthentication
 {
-    public partial class CognitoUser
-    { 
+    public sealed partial class CognitoUser
+    {
         /// <summary>
         /// The client secret for the associated client, if one is set
         /// </summary>
@@ -45,42 +45,42 @@ namespace Amazon.Extensions.CognitoAuthentication
         public CognitoDevice Device { get; set; }
 
         /// <summary>
-        /// The userID of the associated user. UserID can only be configured through the 
+        /// The userID of the associated user. UserID can only be configured through the
         /// constructor,  and once set it cannot be changed.
         /// </summary>
         public string UserID { get; private set; }
 
         /// <summary>
-        /// The username of the associated user. Username can only be configured through the 
+        /// The username of the associated user. Username can only be configured through the
         /// constructor, and once set it cannot be changed.
         /// </summary>
         public string Username { get; private set; }
 
         /// <summary>
-        /// The user pool of the associated user. UserPool can only be configured through 
+        /// The user pool of the associated user. UserPool can only be configured through
         /// the constructor, and once set it cannot be changed.
         /// </summary>
         public CognitoUserPool UserPool { get; private set; }
 
         /// <summary>
-        /// The clientID of the associated user. ClientID can only be configured through 
+        /// The clientID of the associated user. ClientID can only be configured through
         /// the constructor, and once set it cannot be changed.
         /// </summary>
         public string ClientID { get; private set; }
 
         /// <summary>
-        /// The status of the associated user. 
+        /// The status of the associated user.
         /// </summary>
         public string Status { get; private set; }
 
         /// <summary>
-        /// The IAmazonCognitoIdentityProvider client of the associated user. Provider can 
+        /// The IAmazonCognitoIdentityProvider client of the associated user. Provider can
         /// only be configured through the constructor, and once set it cannot be changed.
         /// </summary>
         internal IAmazonCognitoIdentityProvider Provider { get; private set; }
 
         /// <summary>
-        /// The attributes of the associated user. 
+        /// The attributes of the associated user.
         /// </summary>
         public Dictionary<string, string> Attributes { get; private set; } = new Dictionary<string, string>();
 
@@ -90,7 +90,7 @@ namespace Amazon.Extensions.CognitoAuthentication
         public Dictionary<string, string> Settings { get; set; }
 
         /// <summary>
-        /// Private property to get and set the pool name of the user pool the user 
+        /// Private property to get and set the pool name of the user pool the user
         /// is associated with.
         /// </summary>
         private string PoolName { get; set; }
@@ -105,14 +105,14 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// <param name="clientSecret">Client secret for the specified client, if exists</param>
         /// <param name="username">Username for user, if different from userID</param>
         public CognitoUser(string userID, string clientID,
-                           CognitoUserPool pool,
-                           IAmazonCognitoIdentityProvider provider,
-                           string clientSecret = null,
-                           string status = null,
-                           string username = null,
-                           Dictionary<string, string> attributes = null)
+            CognitoUserPool pool,
+            IAmazonCognitoIdentityProvider provider,
+            string clientSecret = null,
+            string status = null,
+            string username = null,
+            Dictionary<string, string> attributes = null)
         {
-            if(pool.PoolID.Contains("_"))
+            if (pool.PoolID.Contains("_"))
             {
                 this.PoolName = pool.PoolID.Split('_')[1];
             }
@@ -163,7 +163,7 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// </summary>
         /// <param name="confirmationCode">Confirmation code sent to user via email or SMS</param>
         /// <param name="forcedAliasCreation">Boolean specifying whether forced alias creation is desired</param>
-        public virtual Task ConfirmSignUpAsync(string confirmationCode, bool forcedAliasCreation)
+        public Task ConfirmSignUpAsync(string confirmationCode, bool forcedAliasCreation)
         {
             ConfirmSignUpRequest confirmRequest = CreateConfirmSignUpRequest(confirmationCode, forcedAliasCreation);
 
@@ -174,7 +174,7 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// Request to resend registration confirmation code for a user using an asynchronous call
         /// </summary>
         /// <returns>Returns the delivery details for the confirmation code request</returns>
-        public virtual Task ResendConfirmationCodeAsync()
+        public Task ResendConfirmationCodeAsync()
         {
             ResendConfirmationCodeRequest resendRequest = CreateResendConfirmationCodeRequest();
 
@@ -182,10 +182,10 @@ namespace Amazon.Extensions.CognitoAuthentication
         }
 
         /// <summary>
-        /// Allows the user to reset their password using an asynchronous call. Should be used in 
-        /// conjunction with the ConfirmPasswordAsync method 
+        /// Allows the user to reset their password using an asynchronous call. Should be used in
+        /// conjunction with the ConfirmPasswordAsync method
         /// </summary>
-        public virtual Task ForgotPasswordAsync()
+        public Task ForgotPasswordAsync()
         {
             ForgotPasswordRequest forgotPassRequest = CreateForgotPasswordRequest();
 
@@ -198,7 +198,7 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// </summary>
         /// <param name="confirmationCode">The confirmation code sent to the suer</param>
         /// <param name="newPassword">The new desired password for the user</param>
-        public virtual Task ConfirmForgotPasswordAsync(string confirmationCode, string newPassword)
+        public Task ConfirmForgotPasswordAsync(string confirmationCode, string newPassword)
         {
             ConfirmForgotPasswordRequest confirmResetPassRequest =
                 CreateConfirmPasswordRequest(confirmationCode, newPassword);
@@ -212,7 +212,7 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// </summary>
         /// <param name="oldPass">The user's old password</param>
         /// <param name="newPass">The desired new password</param>
-        public virtual Task ChangePasswordAsync(string oldPass, string newPass)
+        public Task ChangePasswordAsync(string oldPass, string newPass)
         {
             ChangePasswordRequest changePassRequest = CreateChangePasswordRequest(oldPass, newPass);
 
@@ -223,7 +223,7 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// Gets the details for the current user using an asynchronous call
         /// </summary>
         /// <returns>Returns a tuple containing the user attributes and settings, in that order</returns>
-        public virtual Task<GetUserResponse> GetUserDetailsAsync()
+        public Task<GetUserResponse> GetUserDetailsAsync()
         {
             EnsureUserAuthenticated();
 
@@ -242,10 +242,10 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// <param name="medium">Name of the attribute the verification code is being sent to.
         /// Should be either email or phone_number.</param>
         /// <returns>Returns the delivery details for the attribute verification code request</returns>
-        public virtual Task GetAttributeVerificationCodeAsync(string medium)
+        public Task GetAttributeVerificationCodeAsync(string medium)
         {
             GetUserAttributeVerificationCodeRequest getAttributeCodeRequest =
-                    CreateGetUserAttributeVerificationCodeRequest(medium);
+                CreateGetUserAttributeVerificationCodeRequest(medium);
 
             return Provider.GetUserAttributeVerificationCodeAsync(getAttributeCodeRequest);
         }
@@ -253,7 +253,7 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// <summary>
         /// Sign-out from all devices associated with this user using an asynchronous call
         /// </summary>
-        public virtual Task GlobalSignOutAsync()
+        public Task GlobalSignOutAsync()
         {
             EnsureUserAuthenticated();
 
@@ -269,7 +269,7 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// <summary>
         /// Deletes the current user using an asynchronous call
         /// </summary>
-        public virtual Task DeleteUserAsync()
+        public Task DeleteUserAsync()
         {
             EnsureUserAuthenticated();
 
@@ -286,7 +286,7 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// </summary>
         /// <param name="attributeName">Attribute to be verified. Should either be email or phone_number</param>
         /// <param name="verificationCode">The verification code for the attribute being verified</param>
-        public virtual Task VerifyAttributeAsync(string attributeName, string verificationCode)
+        public Task VerifyAttributeAsync(string attributeName, string verificationCode)
         {
             VerifyUserAttributeRequest verifyUserAttributeRequest =
                 CreateVerifyUserAttributeRequest(attributeName, verificationCode);
@@ -299,7 +299,7 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// using an asynchronous call
         /// </summary>
         /// <param name="attributes">The attributes to be updated</param>
-        public virtual async Task UpdateAttributesAsync(IDictionary<string, string> attributes)
+        public async Task UpdateAttributesAsync(IDictionary<string, string> attributes)
         {
             UpdateUserAttributesRequest updateUserAttributesRequest =
                 CreateUpdateUserAttributesRequest(attributes);
@@ -318,7 +318,7 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// an asynchronous call
         /// </summary>
         /// <param name="attributeNamesToDelete">List of attributes to delete</param>
-        public virtual async Task DeleteAttributesAsync(IList<string> attributeNamesToDelete)
+        public async Task DeleteAttributesAsync(IList<string> attributeNamesToDelete)
         {
             DeleteUserAttributesRequest deleteUserAttributesRequest =
                 CreateDeleteUserAttributesRequest(attributeNamesToDelete);
@@ -340,7 +340,7 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// using an asynchronous call
         /// </summary>
         /// <param name="userSettings">Dictionary for the user MFA settings of the form [attribute, delivery medium]</param>
-        public virtual async Task SetUserSettingsAsync(IDictionary<string, string> userSettings)
+        public async Task SetUserSettingsAsync(IDictionary<string, string> userSettings)
         {
             SetUserSettingsRequest setUserSettingsRequest = CreateSetUserSettingsRequest(userSettings);
 
@@ -359,10 +359,11 @@ namespace Amazon.Extensions.CognitoAuthentication
         /// <param name="limit">Maxmimum number of devices to be returned in this call</param>
         /// <param name="paginationToken">Token to continue earlier search</param>
         /// <returns>Returns a list of CognitoDevices associated with this user</returns>
-        public virtual async Task<List<CognitoDevice>> ListDevicesAsync(int limit, string paginationToken)
+        public async Task<List<CognitoDevice>> ListDevicesAsync(int limit, string paginationToken)
         {
             ListDevicesRequest listDevicesRequest = CreateListDevicesRequest(limit, paginationToken);
-            ListDevicesResponse listDevicesReponse = await Provider.ListDevicesAsync(listDevicesRequest).ConfigureAwait(false);
+            ListDevicesResponse listDevicesReponse =
+                await Provider.ListDevicesAsync(listDevicesRequest).ConfigureAwait(false);
             List<CognitoDevice> devicesList = new List<CognitoDevice>();
 
             foreach (DeviceType device in listDevicesReponse.Devices)
@@ -455,27 +456,30 @@ namespace Amazon.Extensions.CognitoAuthentication
             return changePassRequest;
         }
 
-        private GetUserAttributeVerificationCodeRequest CreateGetUserAttributeVerificationCodeRequest(string attributeName)
+        private GetUserAttributeVerificationCodeRequest CreateGetUserAttributeVerificationCodeRequest(
+            string attributeName)
         {
             EnsureUserAuthenticated();
 
-            GetUserAttributeVerificationCodeRequest getAttributeCodeRequest = new GetUserAttributeVerificationCodeRequest()
-            {
-                AccessToken = SessionTokens.AccessToken,
-                AttributeName = attributeName
-            };
+            GetUserAttributeVerificationCodeRequest getAttributeCodeRequest =
+                new GetUserAttributeVerificationCodeRequest()
+                {
+                    AccessToken = SessionTokens.AccessToken,
+                    AttributeName = attributeName
+                };
 
             return getAttributeCodeRequest;
         }
 
-        
+
         /// <summary>
         /// Internal function that creates a CognitoUserSession based on the authentication result
         /// </summary>
         /// <param name="authResult">An authentication result during authentication flow</param>
         /// <param name="refreshTokenOverride">Optional variable to override the refreshToken manually</param>
         /// <returns>Returns a CognitoUserSession based on the authentication result</returns>
-        private CognitoUserSession GetCognitoUserSession(AuthenticationResultType authResult, string refreshTokenOverride = null)
+        private CognitoUserSession GetCognitoUserSession(AuthenticationResultType authResult,
+            string refreshTokenOverride = null)
         {
             string idToken = authResult.IdToken;
             string accessToken = authResult.AccessToken;
@@ -491,7 +495,8 @@ namespace Amazon.Extensions.CognitoAuthentication
                 refreshToken = authResult.RefreshToken;
             }
 
-            return new CognitoUserSession(idToken, accessToken, refreshToken, currentTime, currentTime.AddSeconds(authResult.ExpiresIn));
+            return new CognitoUserSession(idToken, accessToken, refreshToken, currentTime,
+                currentTime.AddSeconds(authResult.ExpiresIn));
         }
 
         /// <summary>
@@ -502,7 +507,8 @@ namespace Amazon.Extensions.CognitoAuthentication
             this.SessionTokens = null;
         }
 
-        private VerifyUserAttributeRequest CreateVerifyUserAttributeRequest(string attributeName, string verificationCode)
+        private VerifyUserAttributeRequest CreateVerifyUserAttributeRequest(string attributeName,
+            string verificationCode)
         {
             EnsureUserAuthenticated();
 
@@ -533,7 +539,8 @@ namespace Amazon.Extensions.CognitoAuthentication
         {
             if (attributeNamesToDelete == null || attributeNamesToDelete.Count < 1)
             {
-                throw new ArgumentNullException("attributeNamesToDelete cannot be null or empty.", "attributeNamesToDelete");
+                throw new ArgumentNullException("attributeNamesToDelete cannot be null or empty.",
+                    "attributeNamesToDelete");
             }
 
             EnsureUserAuthenticated();
